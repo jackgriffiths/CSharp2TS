@@ -48,6 +48,12 @@ namespace CSharp2TS.Tests.Generators {
             AddType(typeof(TestClassWithMethods));
             AddType(typeof(TestClassWithMethodsDefault));
             AddType(typeof(TestClassMethodReturnTypes));
+            AddType(typeof(Shape));
+            AddType(typeof(Circle));
+            AddType(typeof(Square));
+            AddType(typeof(DefaultDiscriminatorRoot));
+            AddType(typeof(IntDiscriminatorChild));
+            AddType(typeof(NoDiscriminatorChild));
 
             generator = new TSInterfaceGenerator(files, options);
             generatorPascalCase = new TSInterfaceGenerator(files, optionsPascalCase);
@@ -159,6 +165,51 @@ namespace CSharp2TS.Tests.Generators {
             string result = generator.Generate(typeRef.Resolve());
 
             TestMatchesFile("Expected/TestClassMethodReturnTypes.ts", result);
+        }
+
+        [Test]
+        public void InterfaceGenerator_PolymorphicDerivedType_IncludesDiscriminatorAndInheritedProperties() {
+            var typeRef = module.ImportReference(typeof(Circle));
+
+            string result = generator.Generate(typeRef.Resolve());
+
+            TestMatchesFile("Expected/Circle.ts", result);
+        }
+
+        [Test]
+        public void InterfaceGenerator_PolymorphicDerivedTypeWithTSInterfaceAttribute_UsesCustomName() {
+            var typeRef = module.ImportReference(typeof(Square));
+
+            string result = generator.Generate(typeRef.Resolve());
+
+            TestMatchesFile("Expected/SquareShape.ts", result);
+        }
+
+        [Test]
+        public void InterfaceGenerator_PolymorphicDerivedType_DefaultDiscriminatorPropertyName() {
+            var typeRef = module.ImportReference(typeof(DefaultDiscriminatorChild));
+
+            string result = generator.Generate(typeRef.Resolve());
+
+            TestMatchesFile("Expected/DefaultDiscriminatorChild.ts", result);
+        }
+
+        [Test]
+        public void InterfaceGenerator_PolymorphicDerivedType_IntDiscriminator() {
+            var typeRef = module.ImportReference(typeof(IntDiscriminatorChild));
+
+            string result = generator.Generate(typeRef.Resolve());
+
+            TestMatchesFile("Expected/IntDiscriminatorChild.ts", result);
+        }
+
+        [Test]
+        public void InterfaceGenerator_PolymorphicDerivedType_NoDiscriminator() {
+            var typeRef = module.ImportReference(typeof(NoDiscriminatorChild));
+
+            string result = generator.Generate(typeRef.Resolve());
+
+            TestMatchesFile("Expected/NoDiscriminatorChild.ts", result);
         }
 
         private void AddType(Type type) {

@@ -47,6 +47,8 @@ public class TestController : ControllerBase {
 
 Additional attributes include `TSEndpoint` (override return types), `TSExclude` (exclude properties/endpoints), `TSNullable` (mark types as nullable), and `TSImport` (add custom imports to generated services). For more examples check out the [docs](CSharp2TS.Core/PACKAGE.md).
 
+Classes using System.Text.Json polymorphism (`[JsonPolymorphic]` / `[JsonDerivedType]`) are generated as TypeScript discriminated unions - mark the base type with `TSInterface` and the derived types are generated automatically, each with its discriminator as a literal type. See the [docs](CSharp2TS.Core/PACKAGE.md) for an example.
+
 ## CSharp2TS.CLI
 
 ![NuGet Version](https://img.shields.io/nuget/v/csharp2ts.cli)

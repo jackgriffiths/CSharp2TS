@@ -2,6 +2,7 @@
 using CSharp2TS.CLI.Generators.TSEnums;
 using CSharp2TS.CLI.Generators.TSInterfaces;
 using CSharp2TS.CLI.Generators.TSServices;
+using CSharp2TS.CLI.Generators.TSUnions;
 using CSharp2TS.CLI.Templates;
 using CSharp2TS.CLI.Utility;
 using CSharp2TS.Core.Attributes;
@@ -11,6 +12,7 @@ namespace CSharp2TS.CLI.Generators {
     public class Generator {
         private readonly Options options;
         private readonly Dictionary<string, TSFileInfo> files = [];
+        private readonly HashSet<string> generatedInterfaces = [];
 
         public Generator(Options options) {
             this.options = options;
@@ -60,6 +62,30 @@ namespace CSharp2TS.CLI.Generators {
             foreach (var type in interfaces) {
                 files.Add(type.FullName, NameUtility.GetFileDetails(type, options, options.ModelOutputFolder!));
             }
+
+            foreach (var type in interfaces) {
+                GatherDerivedTypes(type);
+            }
+        }
+
+        private void GatherDerivedTypes(TypeDefinition rootType) {
+            if (!JsonPolymorphismUtility.IsPolymorphicRoot(rootType)) {
+                return;
+            }
+
+            // [JsonDerivedType] types are generated alongside their polymorphic root and default to its
+            // folder. Types with their own [TSInterface] attribute are registered by the passes above.
+            string rootFolder = files[rootType.FullName].Folder;
+
+            foreach (var derivedType in JsonPolymorphismUtility.GetDerivedTypes(rootType)) {
+                if (derivedType.Type.HasAttribute<TSInterfaceAttribute>() || files.ContainsKey(derivedType.Type.FullName)) {
+                    continue;
+                }
+
+                files.Add(derivedType.Type.FullName, NameUtility.GetFileDetails(derivedType.Type, options, rootFolder));
+
+                GatherDerivedTypes(derivedType.Type);
+            }
         }
 
         private void GenerateServices() {
@@ -108,11 +134,29 @@ namespace CSharp2TS.CLI.Generators {
             }
 
             TSInterfaceGenerator generator = new(files, options);
+            TSUnionGenerator unionGenerator = new(files);
 
             foreach (TypeDefinition type in types) {
-                string fileContents = generator.Generate(type);
+                GenerateInterface(generator, unionGenerator, type);
+            }
+        }
 
-                GenerateFile(files[type.FullName], fileContents);
+        private void GenerateInterface(TSInterfaceGenerator generator, TSUnionGenerator unionGenerator, TypeDefinition type) {
+            if (!generatedInterfaces.Add(type.FullName)) {
+                return;
+            }
+
+            if (JsonPolymorphismUtility.IsPolymorphicRoot(type)) {
+                GenerateFile(files[type.FullName], unionGenerator.Generate(type));
+
+                // Derived types without their own [TSInterface] attribute are generated with their root
+                foreach (var derivedType in JsonPolymorphismUtility.GetDerivedTypes(type)) {
+                    if (!derivedType.Type.HasAttribute<TSInterfaceAttribute>()) {
+                        GenerateInterface(generator, unionGenerator, derivedType.Type);
+                    }
+                }
+            } else {
+                GenerateFile(files[type.FullName], generator.Generate(type));
             }
         }
 

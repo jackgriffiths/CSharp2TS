@@ -16,17 +16,43 @@ namespace CSharp2TS.CLI.Generators.TSInterfaces {
 
         public string Generate(TypeDefinition typeDef) {
             TSInterface tsInterface = new(NameUtility.GetName(typeDef));
-            var interfaceAttribute = typeDef.GetAttribute<TSInterfaceAttribute>();
-            tsInterface.GenerateClass = interfaceAttribute.GetAttributeValue<bool>(nameof(TSInterfaceAttribute.GenerateClass));
-            if (interfaceAttribute.TryGetAttributeValue<bool>(nameof(TSInterfaceAttribute.IncludeMethods), out var includeMethods)) {
-                tsInterface.IncludeMethods = includeMethods;
-            } else {
-                tsInterface.IncludeMethods = interfaceAttribute.GetConstructorArgument<bool>();
+
+            // Derived types of a polymorphic root are generated without their own [TSInterface] attribute
+            if (typeDef.TryGetAttribute<TSInterfaceAttribute>(out var interfaceAttribute)) {
+                tsInterface.GenerateClass = interfaceAttribute.GetAttributeValue<bool>(nameof(TSInterfaceAttribute.GenerateClass));
+                if (interfaceAttribute.TryGetAttributeValue<bool>(nameof(TSInterfaceAttribute.IncludeMethods), out var includeMethods)) {
+                    tsInterface.IncludeMethods = includeMethods;
+                } else {
+                    tsInterface.IncludeMethods = interfaceAttribute.GetConstructorArgument<bool>();
+                }
             }
 
+            AddDiscriminatorProperty(tsInterface, typeDef);
             ParseTypes(tsInterface, typeDef, typeDef);
 
             return BuildTsFile(tsInterface);
+        }
+
+        private void AddDiscriminatorProperty(TSInterface tsInterface, TypeDefinition typeDef) {
+            if (!JsonPolymorphismUtility.TryGetDiscriminator(typeDef, out string discriminatorName, out string tsLiteral)) {
+                return;
+            }
+
+            var tsType = new TSType {
+                TypeName = tsLiteral,
+                IsLiteral = true,
+            };
+
+            // The discriminator name is what the serializer emits, so no member casing is applied
+            tsInterface.Properties.Add(new TSInterfaceProperty(EscapePropertyName(discriminatorName), tsType, false, null));
+        }
+
+        private static string EscapePropertyName(string name) {
+            bool isValidIdentifier = name.Length > 0
+                && (char.IsLetter(name[0]) || name[0] is '_' or '$')
+                && name.Skip(1).All(c => char.IsLetterOrDigit(c) || c is '_' or '$');
+
+            return isValidIdentifier ? name : $"'{name.Replace("'", "\\'")}'";
         }
 
         private void ParseTypes(TSInterface tsInterface, TypeDefinition rootTypeDef, TypeDefinition typeDef) {

@@ -10,6 +10,8 @@ namespace CSharp2TS.CLI.Generators.Common {
         public bool IsDictionary { get; init; }
         public bool IsCollection { get; init; }
         public bool IsEnum { get; init; }
+        // True when TypeName is a literal type, e.g. a polymorphic discriminator like 'circle' or 1
+        public bool IsLiteral { get; init; }
         public int JaggedCount { get; init; }
         public IList<TSType> GenericArguments { get; init; } = [];
 
@@ -18,6 +20,10 @@ namespace CSharp2TS.CLI.Generators.Common {
         }
 
         public string GetDefaultValue(string? defaultValue = null) {
+            if (IsLiteral) {
+                return TypeName;
+            }
+
             if (IsDictionary) {
                 return "{}";
             }

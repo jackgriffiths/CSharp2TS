@@ -15,6 +15,49 @@ public class TestModel {
 
 
 
+**Polymorphic types** configured with System.Text.Json's `[JsonPolymorphic]` / `[JsonDerivedType]` attributes are generated as TypeScript discriminated unions. Add `TSInterface` to the polymorphic base type only - the derived types are generated automatically alongside it.
+
+```c#
+[TSInterface]
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
+[JsonDerivedType(typeof(Circle), "circle")]
+[JsonDerivedType(typeof(Square), "square")]
+public abstract class Shape {
+    public int Id { get; set; }
+}
+
+public class Circle : Shape {
+    public double Radius { get; set; }
+}
+
+public class Square : Shape {
+    public double Width { get; set; }
+}
+```
+
+This generates an interface per derived type, each with its discriminator as a literal type, and a union type for the base:
+
+```ts
+// Circle.ts
+interface Circle {
+  kind: 'circle';
+  radius: number;
+  id: number;
+}
+```
+
+```ts
+// Shape.ts
+import Circle from './Circle';
+import Square from './Square';
+
+type Shape = Circle | Square;
+```
+
+The discriminator property name follows `JsonPolymorphic.TypeDiscriminatorPropertyName` and defaults to `$type`, matching the serializer. String and int discriminators are supported. A derived type can also be given its own `TSInterface` attribute to customise its TypeScript name or folder.
+
+
+
 **TSEnum** can be added to enums to generate a TypeScript enum.
 
 ```c#
