@@ -10,7 +10,7 @@ namespace CSharp2TS.CLI.Generators.Common {
         private static readonly Type[] stringTypes = [
             typeof(char), typeof(string), typeof(Guid),
             typeof(DateTime), typeof(DateTimeOffset), typeof(DateOnly),
-            typeof(TimeOnly)
+            typeof(TimeOnly), typeof(byte[])
         ];
         private static readonly Type[] voidTypes = [typeof(void), typeof(Task), typeof(ActionResult), typeof(IActionResult)];
         private static readonly Type[] fileCollectionTypes = [typeof(FormFileCollection), typeof(IFormFileCollection)];
@@ -111,6 +111,11 @@ namespace CSharp2TS.CLI.Generators.Common {
 
         private static bool TryExtractFromCollection(ref TypeReference type, ref int currentIteration) {
             if (type.IsArray) {
+                // byte[] is not a collection - JSON serializers write it as a base64 string
+                if (SimpleTypeCheck(type, typeof(byte[]))) {
+                    return false;
+                }
+
                 type = ((ArrayType)type).ElementType;
                 currentIteration++;
 

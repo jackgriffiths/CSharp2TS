@@ -76,6 +76,62 @@ namespace CSharp2TS.Tests.Utility {
             Assert.That(result.GetDefaultValue(), Is.EqualTo("null"));
         }
 
+        [Test]
+        public void GetTSPropertyType_ByteArray_ReturnsStringType() {
+            // Arrange - byte[] is serialized as a base64 string in JSON, not a number array
+            var typeRef = GetTypeReference(typeof(byte[]));
+
+            // Act
+            var result = TSTypeMapper.GetTSPropertyType(typeRef, options);
+
+            // Assert
+            Assert.That(result.TypeName, Is.EqualTo(TSTypeConsts.String));
+            Assert.That(result.IsCollection, Is.False);
+            Assert.That(result.JaggedCount, Is.Zero);
+        }
+
+        [Test]
+        public void GetTSPropertyType_ByteArrayList_ReturnsStringCollection() {
+            // Arrange
+            var typeRef = GetTypeReference(typeof(List<byte[]>));
+
+            // Act
+            var result = TSTypeMapper.GetTSPropertyType(typeRef, options);
+
+            // Assert
+            Assert.That(result.TypeName, Is.EqualTo(TSTypeConsts.String));
+            Assert.That(result.IsCollection, Is.True);
+            Assert.That(result.JaggedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetTSPropertyType_JaggedByteArray_ReturnsStringCollection() {
+            // Arrange - only the inner byte[] is base64; the outer array stays a collection
+            var typeRef = GetTypeReference(typeof(byte[][]));
+
+            // Act
+            var result = TSTypeMapper.GetTSPropertyType(typeRef, options);
+
+            // Assert
+            Assert.That(result.TypeName, Is.EqualTo(TSTypeConsts.String));
+            Assert.That(result.IsCollection, Is.True);
+            Assert.That(result.JaggedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetTSPropertyType_ByteList_ReturnsNumberCollection() {
+            // Arrange - only byte[] is base64; other byte collections serialize as number arrays
+            var typeRef = GetTypeReference(typeof(List<byte>));
+
+            // Act
+            var result = TSTypeMapper.GetTSPropertyType(typeRef, options);
+
+            // Assert
+            Assert.That(result.TypeName, Is.EqualTo(TSTypeConsts.Number));
+            Assert.That(result.IsCollection, Is.True);
+            Assert.That(result.JaggedCount, Is.EqualTo(1));
+        }
+
         #endregion
 
         #region Number Types
